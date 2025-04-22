@@ -1,13 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
 
 class Game(BaseModel):
-    """Модель для хранения данных об игре"""
-    appid: int
-    name: Optional[str] = None
-    playtime: Optional[int] = 0
-    genres: List[str] = []
-    tags: List[str] = []
+    steam_appid: int
+    name: str
+    categories: List[str] = []
+    recommendations: int = 0
+    release_year: Optional[int] = None  # Теперь храним только год
 
     def __str__(self):
-        return f"{self.name or 'Unknown'} (ID: {self.appid})"
+        return f"{self.name} (ID: {self.steam_appid})"

@@ -1,18 +1,22 @@
-version: '3.8'
-
 services:
   web:
-    environment:
-      - DEBUG=false
     build: .
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - STEAM_API_KEY=${STEAM_API_KEY}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
+    volumes:
+      - .:/app
 
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

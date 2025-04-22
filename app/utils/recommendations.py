@@ -1,77 +1,66 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict
-import numpy as np
+from typing import List
+from app.models.game import Game
+from app.services.steam import steam_service, logger
 
 
-def recommend_games(
-        user_top_games: List[Dict],
-        all_games: List[Dict],
-        limit: int = 5
-) -> List[Dict]:
-    """Улучшенный алгоритм рекомендаций с учетом:
-    - схожести жанров/тегов
-    - количества текущих игроков
-    - актуальности игры
-    """
-    if not user_top_games or not all_games:
-        return []
-
-    # Исключаем игры, которые уже есть у пользователя
-    user_appids = {game["appid"] for game in user_top_games}
-    available_games = [g for g in all_games if g["appid"] not in user_appids]
-
-    if not available_games:
-        return []
-
-    # Собираем "профиль" пользователя на основе топовых игр
-    profile_features = []
-    for game in user_top_games[:3]:  # Берем топ-3 игры для анализа
-        profile_features.extend(game.get("genres", []))
-        profile_features.extend(game.get("tags", []))
-
-    if not profile_features:
-        return available_games[:limit]
-
-    # Подготовка данных для сравнения
-    game_texts = [" ".join(profile_features)]
-    game_players = []
-    for game in available_games:
-        features = game.get("genres", []) + game.get("tags", [])
-        game_texts.append(" ".join(features) or "unknown")
-        game_players.append(game.get("current_players", 0))
-
+def get_recommendations(steam_id: str) -> List[Game]:
+    """Улучшенный алгоритм рекомендаций"""
     try:
-        # Векторизация текстовых признаков
-        vectorizer = TfidfVectorizer(min_df=1, stop_words="english")
-        vectors = vectorizer.fit_transform(game_texts)
+        # 1. Получаем игры пользователя
+        user_games = steam_service.get_user_games(steam_id)
+        if not user_games:
+            return []
 
-        # Расчет схожести
-        similarity = cosine_similarity(vectors[0:1], vectors[1:])[0]
-
-        # Нормализация количества игроков (0-1)
-        max_players = max(game_players) or 1
-        normalized_players = np.array([p / max_players for p in game_players])
-
-        # Комбинированная оценка (50% схожесть + 50% популярность)
-        combined_scores = 0.5 * similarity + 0.5 * normalized_players
-
-        # Сортировка по комбинированной оценке
-        scored_games = sorted(
-            zip(available_games, combined_scores),
-            key=lambda x: x[1],
+        # 2. Сортируем по дате последнего запуска и берем топ 25
+        recently_played = sorted(
+            user_games,
+            key=lambda x: x.get('rtime_last_played', 0),
             reverse=True
+        )[:25]
+
+        # 3. Сортируем по времени игры и берем топ 10
+        top_played = sorted(
+            recently_played,
+            key=lambda x: x.get('playtime_forever', 0),
+            reverse=True
+        )[:10]
+
+        # 4. Собираем категории из топ 10 игр
+        categories = set()
+        user_appids = {g['appid'] for g in user_games}
+
+        for game in top_played:
+            details = steam_service.get_game_details(game['appid'])
+            if details:
+                categories.update(details.categories)
+
+        if not categories:
+            return []
+
+        # 5. Получаем популярные игры и фильтруем по категориям
+        popular_games = steam_service.get_popular_games()
+        recommended = []
+
+        for game in popular_games:
+            if len(recommended) >= 25:  # Ограничиваем количество проверяемых игр
+                break
+
+            if game['appid'] not in user_appids:
+                details = steam_service.get_game_details(game['appid'])
+                if details and any(cat in details.categories for cat in categories):
+                    recommended.append(details)
+
+        # 6. Сортируем по рекомендациям и году выпуска
+        recommended.sort(
+            key=lambda x: (
+                -x.recommendations,
+                -x.release_year if x.release_year else 0
+            )
         )
 
-        # Формируем результат с дополнительной информацией
-        recommendations = []
-        for game, score in scored_games[:limit]:
-            game["match_score"] = float(score)
-            recommendations.append(game)
-
-        return recommendations
+        # 7. Возвращаем топ 15 игр
+        return recommended[:15]
 
     except Exception as e:
-        print(f"Recommendation error: {e}")
-        # Fallback: сортируем по количеству игроков
-        return sorted(available_games, key=lambda x: x.get("current_players", 0), reverse=True)[:limit]
+        logger.error(f"Recommendation error: {e}")
+        return []

@@ -5,7 +5,6 @@ router = APIRouter(tags=["Authentication"])
 
 @router.get("/login")
 async def steam_login():
-    """Перенаправление на Steam OpenID"""
     return RedirectResponse(
         f"https://steamcommunity.com/openid/login?"
         "openid.ns=http://specs.openid.net/auth/2.0&"
@@ -18,7 +17,6 @@ async def steam_login():
 
 @router.get("/auth/callback")
 async def steam_callback(request: Request):
-    """Обработчик callback от Steam"""
     try:
         params = dict(request.query_params)
         steam_id = params.get("openid.claimed_id", "").split("/")[-1]

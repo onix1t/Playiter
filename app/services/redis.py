@@ -10,17 +10,14 @@ class RedisService:
         try:
             serialized = json.dumps(value)
             return self.client.setex(key, ttl, serialized)
-        except Exception as e:
-            print(f"Redis cache error: {e}")
+        except Exception:
             return False
 
     def get_cached_data(self, key: str) -> dict:
         try:
             data = self.client.get(key)
             return json.loads(data.decode()) if data else None
-        except Exception as e:
-            print(f"Redis get cache error: {e}")
+        except Exception:
             return None
 
-# Глобальный экземпляр
 redis_service = RedisService()
