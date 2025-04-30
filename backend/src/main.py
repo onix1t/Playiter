@@ -1,14 +1,20 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from app.services.steam import steam_service
-from app.utils.recommendations import get_recommendations
-from app.models.game import Game
-from app.services.auth import router as auth_router
-from app.config import settings
+from fastapi.middleware.cors import CORSMiddleware
+
+from .services.steam import steam_service
+from .utils.recommendations import get_recommendations
+from .services.auth import router as auth_router
 
 app = FastAPI(
     title="Steam Game Recommender",
     version="1.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth_router)

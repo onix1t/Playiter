@@ -20,6 +20,9 @@ async def steam_callback(request: Request):
     try:
         params = dict(request.query_params)
         steam_id = params.get("openid.claimed_id", "").split("/")[-1]
-        return {"steam_id": steam_id}
+        # Перенаправляем на frontend с steam_id
+        return RedirectResponse(
+            f"http://localhost:3000/recommendations?steam_id={steam_id}"
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Authentication failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Ошибка: {e}")

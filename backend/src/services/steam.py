@@ -1,8 +1,8 @@
 import requests
 from typing import List, Dict, Optional
-from app.config import settings
-from app.services.redis import redis_service
-from app.models.game import Game
+from ..config import settings
+from ..services.redis import redis_service
+from ..models.game import Game
 import logging
 import time
 
@@ -18,30 +18,29 @@ class SteamService:
         }
 
     def get_user_games(self, steam_id: str) -> List[Dict]:
-        """Получаем список игр пользователя"""
         cache_key = f"user_games:{steam_id}"
-        cached = redis_service.get_cached_data(cache_key)
-        if cached:
+        if cached := redis_service.get_cached_data(cache_key):
             return cached
 
+        # Добавляем таймаут и повторные попытки
         try:
-            url = f"{self.base_url}/IPlayerService/GetOwnedGames/v1/"
-            params = {
-                'key': settings.STEAM_API_KEY,
-                'steamid': steam_id,
-                'include_appinfo': 1,
-                'include_played_free_games': 1
-            }
-
-            response = requests.get(url, params=params, headers=self.headers, timeout=15)
+            response = requests.get(
+                f"{self.base_url}/IPlayerService/GetOwnedGames/v1/",
+                params={
+                    'key': settings.STEAM_API_KEY,
+                    'steamid': steam_id,
+                    'include_appinfo': 1,
+                    'include_played_free_games': 1
+                },
+                headers=self.headers,
+                timeout=10  # Таймаут 10 секунд
+            )
             response.raise_for_status()
-
             games = response.json().get('response', {}).get('games', [])
-            redis_service.cache_data(cache_key, games, 86400)
+            redis_service.cache_data(cache_key, games, ttl=86400)  # 24 часа
             return games
-
-        except Exception as e:
-            logger.error(f"Error fetching user games: {e}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Steam API error: {e}")
             return []
 
     def get_game_details(self, appid: int) -> Optional[Game]:

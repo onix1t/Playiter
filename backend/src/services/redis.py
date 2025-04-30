@@ -1,5 +1,5 @@
 import redis
-from app.config import settings
+from ..config import settings
 import json
 
 class RedisService:
