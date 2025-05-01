@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import GameCard from '../components/GameCard';
 import { getRecommendations } from '../api/steam';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Navbar from '../components/Navbar';
 import './Recommendations.css';
 
 interface Game {
@@ -25,7 +26,7 @@ export default function Recommendations() {
       try {
         const steamId = searchParams.get('steam_id');
         if (!steamId) {
-          setError('Steam ID не найден');
+          setError('Steam ID not found. Please try logging in again.');
           return;
         }
 
@@ -33,12 +34,12 @@ export default function Recommendations() {
         const data = await getRecommendations(steamId);
 
         if (data.recommendations.length === 0) {
-          setError('Не найдено рекомендаций. Возможно, у вас нет игр с достаточным временем игры.');
+          setError('No recommendations found. You may need to play more games to get personalized recommendations.');
         } else {
           setGames(data.recommendations);
         }
       } catch (err) {
-        setError('Ошибка загрузки рекомендаций');
+        setError('Failed to load recommendations. Please try again later.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -48,20 +49,36 @@ export default function Recommendations() {
     fetchRecommendations();
   }, [searchParams]);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="error-message">{error}</div>;
+  if (loading) return <LoadingSpinner fullPage />;
+
+  if (error) return (
+    <>
+      <Navbar />
+      <div className="recommendations-container">
+        <div className="error-message">
+          <h3>Oops!</h3>
+          <p>{error}</p>
+        </div>
+      </div>
+    </>
+  );
 
   return (
-    <div className="recommendations-container">
-      <h1>Your personal recommendations:</h1>
-      <div className="games-grid">
-        {games.map(game => (
-          <GameCard
-            key={game.appid}
-            game={game}
-          />
-        ))}
+    <>
+      <Navbar />
+      <div className="recommendations-container">
+        <h1>Your Personal Recommendations</h1>
+        {games.length > 0 && (
+          <p style={{ textAlign: 'center', marginBottom: '2rem', color: '#aaa' }}>
+            Based on your Steam library and playtime
+          </p>
+        )}
+        <div className="games-grid">
+          {games.map((game) => (
+            <GameCard key={game.appid} game={game} />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

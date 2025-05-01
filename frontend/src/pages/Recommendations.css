@@ -1,17 +1,74 @@
 .recommendations-container {
-  padding: 2rem;
+  padding: 3rem 2rem;
+  background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+  color: #fff;
+  min-height: 100vh;
+}
+
+.recommendations-container h1 {
+  text-align: center;
+  margin-bottom: 3rem;
+  font-size: 2.8rem;
+  color: #00bcd4;
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.recommendations-container h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #00bcd4, transparent);
 }
 
 .games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
+  gap: 2rem;
+  padding: 0 2rem;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .error-message {
-  color: #ff6b6b;
+  color: #ff5252;
+  font-size: 1.3rem;
   text-align: center;
-  padding: 2rem;
-  font-size: 1.2rem;
+  margin-top: 3rem;
+  padding: 1.5rem;
+  background: rgba(255, 82, 82, 0.1);
+  border-radius: 8px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  border-left: 4px solid #ff5252;
 }
+
+/* Анимация для карточек игр */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.games-grid > * {
+  animation: cardEntrance 0.5s ease-out;
+  animation-fill-mode: backwards;
+}
+
+.games-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.games-grid > *:nth-child(2) { animation-delay: 0.2s; }
+.games-grid > *:nth-child(3) { animation-delay: 0.3s; }
+.games-grid > *:nth-child(4) { animation-delay: 0.4s; }
+.games-grid > *:nth-child(5) { animation-delay: 0.5s; }
+.games-grid > *:nth-child(6) { animation-delay: 0.6s; }
+/* Добавьте больше при необходимости */

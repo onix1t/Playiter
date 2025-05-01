@@ -66,7 +66,7 @@ def get_recommendations(steam_id: str) -> List[Game]:
             key=lambda x: (-x.recommendations, -x.release_year if x.release_year else 0)
         )
 
-        return recommended[:15]
+        return recommended[:30]
 
     except Exception as e:
         logger.error(f"Recommendation error: {e}")
