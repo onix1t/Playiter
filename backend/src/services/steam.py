@@ -16,13 +16,46 @@ class SteamService:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
+        # Whitelist для категорий и жанров
+        # Whitelist для категорий (точные названия из Steam)
+        self.category_whitelist = {
+            # Основные игровые режимы
+            'Single-player', 'Multi-player', 'Co-op', 'Online Co-op', 'Local Co-op',
+            'Online Multi-Player', 'Local Multi-Player', 'Cross-Platform Multiplayer',
+            'MMO', 'PvP', 'PvE', 'Shared/Split Screen',
+        }
+
+        # Whitelist для жанров (точные названия из Steam)
+        self.genre_whitelist = {
+            'Action', 'Adventure', 'Casual', 'Indie', 'Massively Multiplayer',
+            'Racing', 'RPG', 'Simulation', 'Sports', 'Strategy',
+            'Free to Play', 'Early Access', 'Gore', 'Violent',
+            'Nudity', 'Sexual Content', 'Anime', 'Story Rich',
+            'Atmospheric', 'Great Soundtrack', 'Pixel Graphics',
+            'Classic', 'Retro', '2D', '3D', 'First-Person',
+            'Third Person', 'Isometric', 'Top-Down', 'Side Scroller',
+            'Survival', 'Horror', 'Sci-fi', 'Fantasy', 'Zombies',
+            'Open World', 'Sandbox', 'Space', 'Stealth', 'Hack and Slash',
+            'Shooter', 'Fighting', 'Platformer', 'Puzzle', 'Rhythm',
+            'Tower Defense', 'Turn-Based', 'Real-Time', 'Tactical',
+            'Visual Novel', 'Card Game', 'Board Game', 'MOBA', 'Battle Royale',
+            'Military', 'Historical', 'Comedy', 'Cyberpunk', 'Post-apocalyptic',
+            'Dystopian', 'Mystery', 'Detective', 'Thriller', 'Western'
+        }
+
+    def _filter_categories(self, categories: List[str]) -> List[str]:
+        """Фильтрует категории по whitelist"""
+        return [cat for cat in categories if cat in self.category_whitelist]
+
+    def _filter_genres(self, genres: List[str]) -> List[str]:
+        """Фильтрует жанры по whitelist"""
+        return [genre for genre in genres if genre in self.genre_whitelist]
 
     def get_user_games(self, steam_id: str) -> List[Dict]:
         cache_key = f"user_games:{steam_id}"
         if cached := redis_service.get_cached_data(cache_key):
             return cached
 
-        # Добавляем таймаут и повторные попытки
         try:
             response = requests.get(
                 f"{self.base_url}/IPlayerService/GetOwnedGames/v1/",
@@ -33,27 +66,25 @@ class SteamService:
                     'include_played_free_games': 1
                 },
                 headers=self.headers,
-                timeout=10  # Таймаут 10 секунд
+                timeout=10
             )
             response.raise_for_status()
             games = response.json().get('response', {}).get('games', [])
-            redis_service.cache_data(cache_key, games, ttl=86400)  # 24 часа
+            redis_service.cache_data(cache_key, games, ttl=86400)
             return games
         except requests.exceptions.RequestException as e:
             logger.error(f"Steam API error: {e}")
             return []
 
     def get_game_details(self, appid: int) -> Optional[Game]:
-        """Получаем детали игры с улучшенной обработкой ошибок"""
+        """Получаем детали игры с фильтрацией категорий и жанров"""
         cache_key = f"game_details:{appid}"
         cached = redis_service.get_cached_data(cache_key)
         if cached:
             return Game(**cached)
 
         try:
-            # Добавляем задержку между запросами
             time.sleep(0.5)
-
             url = f"{self.store_url}/appdetails?appids={appid}"
             response = requests.get(url, headers=self.headers, timeout=15)
 
@@ -75,16 +106,23 @@ class SteamService:
             release_date = game_data.get('release_date', {}).get('date', '')
             if release_date:
                 try:
-                    # Пытаемся извлечь год из строки (например, "1 Dec, 2015" -> 2015)
                     release_year = int(release_date.split(',')[-1].strip())
                 except (ValueError, AttributeError):
                     pass
 
-            # Обработка категорий
+            # Обработка и фильтрация категорий
             categories = []
-            for cat in game_data.get('categories', [])[:5]:  # Берем только первые 5 категорий
+            for cat in game_data.get('categories', []):
                 if isinstance(cat, dict) and 'description' in cat:
                     categories.append(cat['description'])
+            categories = self._filter_categories(categories)
+
+            # Обработка и фильтрация жанров
+            genres = []
+            for genre in game_data.get('genres', []):
+                if isinstance(genre, dict) and 'description' in genre:
+                    genres.append(genre['description'])
+            genres = self._filter_genres(genres)
 
             # Обработка рекомендаций
             recommendations = game_data.get('recommendations', {}).get('total', 0)
@@ -95,6 +133,7 @@ class SteamService:
                 steam_appid=appid,
                 name=game_data.get('name', f"Game {appid}"),
                 categories=categories,
+                genres=genres,
                 recommendations=recommendations,
                 release_year=release_year
             )
@@ -110,7 +149,7 @@ class SteamService:
         return None
 
     def get_popular_games(self) -> List[Dict]:
-        """Получаем список популярных игр с обработкой ошибок"""
+        """Получаем список популярных игр"""
         cache_key = "popular_games"
         cached = redis_service.get_cached_data(cache_key)
         if cached:

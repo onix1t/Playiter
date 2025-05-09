@@ -1,6 +1,8 @@
-import redis
-from ..config import settings
 import json
+import redis
+from typing import List
+
+from ..config import settings
 
 class RedisService:
     def __init__(self):
@@ -19,5 +21,11 @@ class RedisService:
             return json.loads(data.decode()) if data else None
         except Exception:
             return None
+
+    def get_keys_by_pattern(self, pattern: str) -> List[str]:
+        try:
+            return self.client.keys(pattern)
+        except Exception:
+            return []
 
 redis_service = RedisService()

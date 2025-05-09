@@ -3,7 +3,7 @@ import Home from './pages/Home';
 import Recommendations from './pages/Recommendations';
 import './App.css';
 
-export default function App() {  // Добавлен default export
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
