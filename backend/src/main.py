@@ -49,7 +49,7 @@ async def get_user_info(steam_id: str):
                 "playtime_hours": g.get('playtime_forever', 0) // 60,
                 "last_played": g.get('rtime_last_played', 0)
             }
-            for g in sorted(games, key=lambda x: x.get('rtime_last_played', 0), reverse=True)[:5]
+            for g in sorted(games, key=lambda x: x.get('rtime_last_played', 0), reverse=True)[:20]
         ]
     }
 
